@@ -4,7 +4,6 @@ from datetime import date
 
 from excelparser import company_name, company_ticker, company_stock_close, company_marketcap, company_n_shares_outstanding, df_dcf, company_description
 
-
 # create a pdf document
 pdf = FPDF(orientation="P", unit="pt", format="A4")
 
@@ -26,8 +25,6 @@ pdf.cell(w=0, h=16, txt=f"Report date: {date.today().strftime('%d/%m/%Y')}", ln=
 pdf.cell(w=0, h=16, txt=f"Ticker: {company_ticker}", ln=1)
 pdf.cell(w=0, h=16, txt=f"Close: {company_stock_close}$", ln=1)
 pdf.cell(w=0, h=16, txt="", ln=1)
-
-
 
 # about the company
 pdf.set_font(family="Arial", size=18, style="B")

@@ -11,7 +11,7 @@ from PyQt6.QtGui import QDesktopServices
 from fpdf import FPDF
 import unicodedata
 from datetime import date
-from excelparser import company_name, company_ticker, company_stock_close, company_marketcap, company_n_shares_outstanding, df_dcf, company_description, company_targetvalue
+from excelparser import parse_excel_file
 
 class MainWindow(QWidget):
     def __init__(self):
@@ -20,15 +20,15 @@ class MainWindow(QWidget):
         self.title = "Portfolio Research Manager"
         self.top = 100
         self.left = 100
-        self.width = 800
-        self.height = 600
+        self.width = 1280
+        self.height = 720
         
         # set context menu policy for the table
         self.table = QTableWidget(self)
         self.table.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
-        self.table.customContextMenuRequested.connect(self.create_context_menu)
 
         self.init_ui()
+
 
     # Define the init_ui method
     def init_ui(self):
@@ -38,24 +38,22 @@ class MainWindow(QWidget):
 
         # Create a QTableWidget object
         self.table = QTableWidget()
-        # Set the number of columns to 2
-        self.table.setColumnCount(5)
+        
+        # Columns
+        table_columns = ["Date", "Company Name", "Ticker", "Close", "Target Value", "Invested?",  "Rating", "Performance since Report Date", "% Difference from Target Value"]
+        
+        # Set the number of columns to length of table_columns
+        self.table.setColumnCount(len(table_columns))
         # Set the horizontal header labels
-        self.table.setHorizontalHeaderLabels(["Date", "Company Name", "Ticker", "Close", "Target Value"])
+        self.table.setHorizontalHeaderLabels(table_columns)
 
         # Set the resize mode for the horizontal header sections
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
+        for i in range(len(table_columns)):
+            self.table.horizontalHeader().setSectionResizeMode(i, QHeaderView.ResizeMode.Stretch)
 
         # Set the column widths
-        self.table.setColumnWidth(0, 300)
-        self.table.setColumnWidth(1, 100)
-        self.table.setColumnWidth(1, 100)
-        self.table.setColumnWidth(1, 100)
-        self.table.setColumnWidth(1, 100)
+        for i in range(len(table_columns)):
+            self.table.setColumnWidth(i, 100)
         
         # Setup the inital data for the table from the records.csv file and update the table with it
         with open("records.csv", "r") as f:
@@ -69,6 +67,9 @@ class MainWindow(QWidget):
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
+        
+        # Double click on a row to open the pdf
+        self.table.doubleClicked.connect(self.open_pdf)
 
         # Create a QHBoxLayout object for the buttons
         button_layout = QHBoxLayout()
@@ -87,42 +88,46 @@ class MainWindow(QWidget):
         
         # Set the layout of the window to the QVBoxLayout object
         self.setLayout(layout)
-        
-        # Connect the customContextMenuRequested signal of the table to the create_context_menu method
-        self.table.customContextMenuRequested.connect(self.create_context_menu)
 
         # Show the window
         self.show()
+        
+        
+    def open_pdf(self):
+            # Get the current row
+            current_row = self.table.currentRow()
+            # Get the current item in the first column of the current row
+            current_ticker = self.table.item(current_row, 2)
+            # Get the text of the current item
+            current_item_text = current_ticker.text()
+            # Open the pdf with the current item text
+            QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(f"{current_item_text.lower()}.pdf"))
 
 
     def add_excel_file(self):
         file_name, _ = QFileDialog.getOpenFileName(self, "Open Excel File", "", "Excel Files (*.xlsx)")
-        if file_name:            
-            # add the sample to the records.csv file
+        if file_name:
+            ### Read excel file and add it to the records.csv file and update the table
+            company_name, company_ticker, company_stock_close, company_targetvalue, stock_rating, company_description = parse_excel_file(file_name)
+            company_targetvalue = round(float(company_targetvalue), 2)
+            company_stock_close = round(float(company_stock_close), 2)
+            change_till_targetvalue = round((company_targetvalue/company_stock_close-1) * 100, 1)
+            
+            # update the table with the new data which is in csv format and then put the data to the csv file
+            update_csv = f"{date.today().strftime('%d/%m/%Y')},{company_name},{company_ticker},{company_stock_close},{company_targetvalue},No,{stock_rating},Empty,{change_till_targetvalue}\n"
+            
+            # update the table with "update_csv"
+            row_position = self.table.rowCount()
+            self.table.insertRow(row_position)
+            for i in range(len(update_csv.split(","))):
+                self.table.setItem(row_position, i, QTableWidgetItem(update_csv.split(",")[i]))
+            
+            # write the data to the CSV file
             with open("records.csv", "a") as f:
-                f.write(f"{date.today().strftime('%d/%m/%Y')},{company_name},{company_ticker},{company_stock_close},{company_targetvalue}\n")
-                
-            self.table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-            self.table.customContextMenuRequested.connect(self.right_click_menu)
-
-            # read the data from the CSV file and add it to the table
-            with open("records.csv", "r") as f:
-                reader = csv.reader(f)
-                for row in reader:
-                    row_position = self.table.rowCount()
-                    self.table.insertRow(row_position)
-                    for i in range(len(row)):
-                        self.table.setItem(row_position, i, QTableWidgetItem(row[i]))
-
-            # row_position = self.table.rowCount()
-            # self.table.insertRow(row_position)
-            # self.table.setItem(row_position, 1, QTableWidgetItem(company_name))
-            # self.table.setItem(row_position, 0, QTableWidgetItem(date.today().strftime("%d/%m/%Y")))
-            # self.table.setItem(row_position, 2, QTableWidgetItem(company_ticker))
-            # self.table.setItem(row_position, 3, QTableWidgetItem(str(company_stock_close)))
-            # self.table.setItem(row_position, 4, QTableWidgetItem(str(company_targetvalue)))
-
-
+                f.write(update_csv)
+            
+            
+            ### PDF generator
             pdf = FPDF(orientation="P", unit="pt", format="A4")
 
             # add page to the pdf
@@ -153,52 +158,8 @@ class MainWindow(QWidget):
             pdf.multi_cell(w=0, h=16, txt=f"{unicodedata.normalize('NFKD', company_description).encode('ASCII', 'ignore').decode('ASCII')}")
 
             # output the pdf
-            pdf.output(f"{company_name}.pdf")
-            
-            # save the pdf to the table
-            self.table.setItem(row_position, 2, QTableWidgetItem(f"{company_name}.pdf"))
-            
-    
-    def right_click_menu(self, position):
-        menu = QMenu()
-        delete_action = menu.addAction("Delete")
-        action = menu.exec_(self.table.mapToGlobal(position))
-        if action == delete_action:
-            current_row = self.table.currentRow()
-            self.table.removeRow(current_row)
-            with open("records.csv", "r") as f:
-                rows = list(csv.reader(f))
-                rows.pop(current_row)
-            with open("records.csv", "w", newline="") as f:
-                writer = csv.writer(f)
-                writer.writerows(rows)
-                
-                
-    def show_pdf(self, row, column):
-        current_item = self.table.item(row, column)
-        if current_item:
-            company = current_item.text()
-            pdf_file = f"{company}.pdf"
-            QDesktopServices.openUrl(f"file:///{pdf_file}")
-            
-    def create_context_menu(self, pos):
-        # create context menu
-        menu = QMenu(self)
-        edit_action = QAction("Edit", self)
-        delete_action = QAction("Delete", self)
-        menu.addAction(edit_action)
-        menu.addAction(delete_action)
-        
-        # display context menu at cursor position
-        action = menu.exec_(self.table.viewport().mapToGlobal(pos))
-        
-        # handle selected action
-        if action == edit_action:
-            # edit the selected item
-            pass
-        elif action == delete_action:
-            # delete the selected item
-            pass
+            pdf.output(f"{company_ticker.lower()}.pdf")
+
 
 # open the app
 if __name__ == "__main__":
