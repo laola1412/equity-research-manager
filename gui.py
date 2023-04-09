@@ -1,5 +1,3 @@
-# create a pyqt6 application which shows 2 buttons at the top, one to add a new excel file and one to generate the pdf and saves it to a table below. If you click on one of the entries of the table, the pdf is displayed on the bottom right of the gui.
-
 import sys
 import csv
 from PyQt6.QtWidgets import QApplication, QWidget, QPushButton, QTableWidget, QTableWidgetItem, QVBoxLayout, QHBoxLayout, QFileDialog, QHeaderView
@@ -12,6 +10,7 @@ from fpdf import FPDF
 import unicodedata
 from datetime import date
 from excelparser import parse_excel_file
+from pdf_generator.report_generator import ReportGenerator
 
 class MainWindow(QWidget):
     def __init__(self):
@@ -103,6 +102,37 @@ class MainWindow(QWidget):
             # Open the pdf with the current item text
             QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(f"{current_item_text.lower()}.pdf"))
 
+    
+    def generate_pdf(self, name, ticker, close, description):
+        # pdf = FPDF(orientation="P", unit="pt", format="A4")
+
+        # # add page to the pdf
+        # pdf.add_page()
+
+        # # create a title (w is the width of the cell, if 0 then it will be the width of the page)
+        # # align = C means center, border = 1 adds a border, ln = 1 means go to the next line
+        # pdf.set_font(family="Arial", size=24)
+        # pdf.cell(w=0, h=50, txt=f"{name} Report", align="C", border=1, ln=1)
+
+        # pdf.set_font(family="Arial", size=8)
+        # pdf.cell(w=0, h=16, txt="", ln=1)
+        # pdf.cell(w=0, h=16, txt=f"Report date: {date.today().strftime('%d/%m/%Y')}", ln=1)
+        # pdf.cell(w=0, h=16, txt=f"Ticker: {ticker}", ln=1)
+        # pdf.cell(w=0, h=16, txt=f"Close: {close}$", ln=1)
+        # pdf.cell(w=0, h=16, txt="", ln=1)
+
+        # # about the company
+        # pdf.set_font(family="Arial", size=16)
+        # pdf.cell(w=0, h=16, txt=f"About", ln=1)
+
+        # pdf.set_font(family="Arial", size=8)
+        # # multi_cell is used for multiple lines of text
+        # pdf.multi_cell(w=0, h=16, txt=f"{unicodedata.normalize('NFKD', description).encode('ASCII', 'ignore').decode('ASCII')}")
+
+        # # output the pdf
+        # pdf.output(f"{ticker.lower()}.pdf")
+        pass
+    
 
     def add_excel_file(self):
         file_name, _ = QFileDialog.getOpenFileName(self, "Open Excel File", "", "Excel Files (*.xlsx)")
@@ -115,6 +145,7 @@ class MainWindow(QWidget):
             
             # update the table with the new data which is in csv format and then put the data to the csv file
             update_csv = f"{date.today().strftime('%d/%m/%Y')},{company_name},{company_ticker},{company_stock_close},{company_targetvalue},No,{stock_rating},Empty,{change_till_targetvalue}\n"
+            update_values = [date.today().strftime('%d/%m/%Y'), company_name, company_ticker, company_stock_close, company_targetvalue, "No", stock_rating, "Empty", change_till_targetvalue]
             
             # update the table with "update_csv"
             row_position = self.table.rowCount()
@@ -126,41 +157,11 @@ class MainWindow(QWidget):
             with open("records.csv", "a") as f:
                 f.write(update_csv)
             
-            
             ### PDF generator
-            pdf = FPDF(orientation="P", unit="pt", format="A4")
-
-            # add page to the pdf
-            pdf.add_page()
-
-            # set a font
-            pdf.set_font(family="Arial", size=24, style="B")
-
-            # create a title (w is the width of the cell, if 0 then it will be the width of the page)
-            # align = C means center, border = 1 adds a border, ln = 1 means go to the next line
-            pdf.cell(w=0, h=50, txt=f"{company_name} Report", align="C", border=1, ln=1)
-
-            # set a font
-            pdf.set_font(family="Arial", size=12)
-
-            pdf.cell(w=0, h=16, txt="", ln=1)
-            pdf.cell(w=0, h=16, txt=f"Report date: {date.today().strftime('%d/%m/%Y')}", ln=1)
-            pdf.cell(w=0, h=16, txt=f"Ticker: {company_ticker}", ln=1)
-            pdf.cell(w=0, h=16, txt=f"Close: {company_stock_close}$", ln=1)
-            pdf.cell(w=0, h=16, txt="", ln=1)
-
-            # about the company
-            pdf.set_font(family="Arial", size=18, style="B")
-            pdf.cell(w=0, h=16, txt=f"About", ln=1)
-
-            pdf.set_font(family="Arial", size=12)
-            # multi_cell is used for multiple lines of text
-            pdf.multi_cell(w=0, h=16, txt=f"{unicodedata.normalize('NFKD', company_description).encode('ASCII', 'ignore').decode('ASCII')}")
-
-            # output the pdf
-            pdf.output(f"{company_ticker.lower()}.pdf")
-
-
+            # self.generate_pdf(company_name, company_ticker, company_stock_close, company_description)
+            ReportGenerator("report_template.html", update_values)
+            
+            
 # open the app
 if __name__ == "__main__":
     app = QApplication(sys.argv)
