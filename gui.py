@@ -10,7 +10,8 @@ from fpdf import FPDF
 import unicodedata
 from datetime import date
 from excelparser import parse_excel_file
-from pdf_generator.report_generator import ReportGenerator
+from report_generator import create_report
+from decorators import timeit
 
 class MainWindow(QWidget):
     def __init__(self):
@@ -30,6 +31,7 @@ class MainWindow(QWidget):
 
 
     # Define the init_ui method
+    @timeit
     def init_ui(self):
         # Set the window title and dimensions
         self.setWindowTitle(self.title)
@@ -91,49 +93,13 @@ class MainWindow(QWidget):
         # Show the window
         self.show()
         
-        
     def open_pdf(self):
-            # Get the current row
             current_row = self.table.currentRow()
-            # Get the current item in the first column of the current row
-            current_ticker = self.table.item(current_row, 2)
-            # Get the text of the current item
-            current_item_text = current_ticker.text()
-            # Open the pdf with the current item text
-            QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(f"{current_item_text.lower()}.pdf"))
-
+            current_ticker = self.table.item(current_row, 2).text()
+            current_date = self.table.item(current_row, 0).text()
+           
+            QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(f"reports/{current_date}_{current_ticker.lower()}.pdf"))
     
-    def generate_pdf(self, name, ticker, close, description):
-        # pdf = FPDF(orientation="P", unit="pt", format="A4")
-
-        # # add page to the pdf
-        # pdf.add_page()
-
-        # # create a title (w is the width of the cell, if 0 then it will be the width of the page)
-        # # align = C means center, border = 1 adds a border, ln = 1 means go to the next line
-        # pdf.set_font(family="Arial", size=24)
-        # pdf.cell(w=0, h=50, txt=f"{name} Report", align="C", border=1, ln=1)
-
-        # pdf.set_font(family="Arial", size=8)
-        # pdf.cell(w=0, h=16, txt="", ln=1)
-        # pdf.cell(w=0, h=16, txt=f"Report date: {date.today().strftime('%d/%m/%Y')}", ln=1)
-        # pdf.cell(w=0, h=16, txt=f"Ticker: {ticker}", ln=1)
-        # pdf.cell(w=0, h=16, txt=f"Close: {close}$", ln=1)
-        # pdf.cell(w=0, h=16, txt="", ln=1)
-
-        # # about the company
-        # pdf.set_font(family="Arial", size=16)
-        # pdf.cell(w=0, h=16, txt=f"About", ln=1)
-
-        # pdf.set_font(family="Arial", size=8)
-        # # multi_cell is used for multiple lines of text
-        # pdf.multi_cell(w=0, h=16, txt=f"{unicodedata.normalize('NFKD', description).encode('ASCII', 'ignore').decode('ASCII')}")
-
-        # # output the pdf
-        # pdf.output(f"{ticker.lower()}.pdf")
-        pass
-    
-
     def add_excel_file(self):
         file_name, _ = QFileDialog.getOpenFileName(self, "Open Excel File", "", "Excel Files (*.xlsx)")
         if file_name:
@@ -142,10 +108,11 @@ class MainWindow(QWidget):
             company_targetvalue = round(float(company_targetvalue), 2)
             company_stock_close = round(float(company_stock_close), 2)
             change_till_targetvalue = round((company_targetvalue/company_stock_close-1) * 100, 1)
+            todays_date = date.today().strftime('%Y%m%d')
             
             # update the table with the new data which is in csv format and then put the data to the csv file
-            update_csv = f"{date.today().strftime('%d/%m/%Y')},{company_name},{company_ticker},{company_stock_close},{company_targetvalue},No,{stock_rating},Empty,{change_till_targetvalue}\n"
-            update_values = [date.today().strftime('%d/%m/%Y'), company_name, company_ticker, company_stock_close, company_targetvalue, "No", stock_rating, "Empty", change_till_targetvalue]
+            update_csv = f"{todays_date},{company_name},{company_ticker},{company_stock_close},{company_targetvalue},No,{stock_rating},Empty,{change_till_targetvalue}\n"
+            update_values = [todays_date, company_name, company_ticker, company_stock_close, company_targetvalue, "No", stock_rating, "Empty", change_till_targetvalue]
             
             # update the table with "update_csv"
             row_position = self.table.rowCount()
@@ -157,9 +124,8 @@ class MainWindow(QWidget):
             with open("records.csv", "a") as f:
                 f.write(update_csv)
             
-            ### PDF generator
-            # self.generate_pdf(company_name, company_ticker, company_stock_close, company_description)
-            ReportGenerator("report_template.html", update_values)
+            # generate the pdf report
+            create_report(company_ticker, company_name, company_stock_close, todays_date, company_targetvalue, stock_rating, company_description)
             
             
 # open the app
