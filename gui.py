@@ -125,7 +125,7 @@ class MainWindow(QWidget):
                 f.write(update_csv)
             
             # generate the pdf report
-            create_report(company_ticker, company_name, company_stock_close, todays_date, company_targetvalue, stock_rating, company_description)
+            create_report(company_ticker, company_name, company_stock_close, todays_date, company_targetvalue, stock_rating)
             
             
 # open the app
