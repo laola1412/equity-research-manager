@@ -3,12 +3,14 @@ import csv
 from PyQt6.QtWidgets import *
 from PyQt6.QtCore import *
 from PyQt6.QtGui import *
+from PyQt6 import QtCore
 from datetime import date
 from excelparser import parse_excel_file
 from report_generator import create_report
 from decorators import timeit
 import shutil
 import pandas as pd
+import webbrowser
 
 
 class MainWindow(QWidget):
@@ -46,6 +48,11 @@ class MainWindow(QWidget):
         self.show_model_action = QAction("Open Model")
         self.menu.addAction(self.show_model_action)
         self.show_model_action.triggered.connect(self.open_model)
+
+        # open online resources
+        self.search_online = QAction("Search Online")
+        self.menu.addAction(self.search_online)
+        self.search_online.triggered.connect(self.search_online_resources)
 
         self.menu.popup(QCursor.pos())
 
@@ -185,6 +192,16 @@ class MainWindow(QWidget):
             # copy the xlsx file and save it to the models folder
             shutil.copyfile(
                 file_name, f"models/{todays_date}_{company_ticker.lower()}.xlsx")
+
+    def search_online_resources(self):
+        current_row = self.table.currentRow()
+        current_ticker = self.table.item(current_row, 2).text()
+
+        websites = [f"https://seekingalpha.com/symbol/{current_ticker}",
+                    f"http://openinsider.com/search?q={current_ticker}",
+                    f"https://www.stratosphere.io/company/{current_ticker}/"]
+        for site in websites:
+            webbrowser.open(site)
 
 
 # open the app
