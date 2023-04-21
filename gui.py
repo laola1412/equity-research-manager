@@ -11,6 +11,7 @@ from decorators import timeit
 import shutil
 import pandas as pd
 import webbrowser
+from table_formatting import DollarSignFormat, TitleCaseFormat, PercentFormat, DateFormat
 
 
 class MainWindow(QWidget):
@@ -69,9 +70,7 @@ class MainWindow(QWidget):
         table_columns = ["Date", "Company Name", "Ticker", "Close", "Target Value", "Invested?",
                          "Rating", "Performance since Report Date", "% Difference from Target Value"]
 
-        # Set the number of columns to length of table_columns
         self.table.setColumnCount(len(table_columns))
-        # Set the horizontal header labels
         self.table.setHorizontalHeaderLabels(table_columns)
 
         # Set the resize mode for the horizontal header sections
@@ -91,6 +90,13 @@ class MainWindow(QWidget):
                 for column_number, data in enumerate(row_data):
                     self.table.setItem(
                         row_number, column_number, QTableWidgetItem(data))
+
+        # setup column formatting
+        self.table.setItemDelegateForColumn(3, DollarSignFormat(self.table))
+        self.table.setItemDelegateForColumn(4, DollarSignFormat(self.table))
+        self.table.setItemDelegateForColumn(1, TitleCaseFormat(self.table))
+        self.table.setItemDelegateForColumn(8, PercentFormat(self.table))
+        self.table.setItemDelegateForColumn(0, DateFormat(self.table))
 
         # Set the edit triggers, selection behavior, and selection mode for the table
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
@@ -171,13 +177,11 @@ class MainWindow(QWidget):
 
             # update the table with the new data which is in csv format and then put the data to the csv file
             update_csv = f"{todays_date},{company_name},{company_ticker},{company_stock_close},{company_targetvalue},No,{stock_rating},Empty,{change_till_targetvalue}\n"
-            update_values = [todays_date, company_name, company_ticker, company_stock_close,
-                             company_targetvalue, "No", stock_rating, "Empty", change_till_targetvalue]
 
-            # update the table with "update_csv"
+            # update the table
             row_position = self.table.rowCount()
             self.table.insertRow(row_position)
-            for i in range(len(update_csv.split(","))):
+            for i in range(len(update_csv.split(','))):
                 self.table.setItem(row_position, i, QTableWidgetItem(
                     update_csv.split(",")[i]))
 
